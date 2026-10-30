@@ -1,0 +1,84 @@
+# =====================================================================
+# Workflow de Integración Continua (CI)
+# Ejecuta la suite de tests con pytest en cada pull request contra main.
+# Su resultado se usa como "status check" requerido por la branch
+# protection rule de main: si los tests fallan, no se puede mergear.
+# =====================================================================
+
+# Nombre del workflow: aparece en la pestaña Actions y en el PR
+name: CI
+
+# ---------------------------------------------------------------------
+# TRIGGERS (eventos que disparan el workflow)
+# ---------------------------------------------------------------------
+on:
+  # Evento principal: se ejecuta al abrir un PR contra main y en cada
+  # nuevo push a la rama de ese PR. Es lo que lo convierte en quality gate.
+  pull_request:
+    branches: [main]
+  # También al integrar cambios en main, para que el badge del README
+  # refleje el estado actual de la rama principal.
+  push:
+    branches: [main]
+  # Permite ejecutarlo manualmente desde la pestaña Actions.
+  workflow_dispatch:
+
+# ---------------------------------------------------------------------
+# JOBS: unidades de trabajo que corren en un runner
+# ---------------------------------------------------------------------
+jobs:
+  # El nombre del job ("tests") es el nombre del status check que
+  # se exige en la branch protection rule.
+  tests:
+    # RUNNER: máquina virtual Ubuntu hospedada por GitHub
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # STEPS: pasos que se ejecutan en orden dentro del job.
+    # Cada step usa una ACTION reutilizable (uses) o un comando (run).
+    steps:
+      # 1) Descarga el código del repositorio en el runner
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      # 2) Instala la versión de Python indicada
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 3) Cache de paquetes pip. La clave depende del hash de
+      #    requirements.txt: si no cambió, se reutiliza el cache y la
+      #    instalación es más rápida. restore-keys permite usar un cache
+      #    parcial anterior si la clave exacta no existe.
+      - name: Cache de dependencias pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      # 4) Instala las dependencias del proyecto
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      # 5) Ejecuta la suite de tests. Genera un reporte HTML (pytest-html)
+      #    y un reporte de cobertura (pytest-cov). Si algún test falla,
+      #    pytest devuelve código de salida != 0, el step falla y el
+      #    check del PR queda en rojo.
+      - name: Ejecutar tests
+        run: >
+          pytest
+          --html=reports/report.html --self-contained-html
+          --cov=app --cov-report=html:reports/coverage --cov-report=term
+
+      # 6) Publica los reportes como ARTIFACT descargable desde la corrida.
+      #    "!cancelled()" hace que se suban también cuando los tests fallan,
+      #    para poder ver qué test se rompió.
+      - name: Publicar reporte de tests
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report
+          path: reports/
+          retention-days: 30
