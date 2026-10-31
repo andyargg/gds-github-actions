@@ -21,3 +21,12 @@ Levantar la API: `uvicorn app.main:app --reload` → http://localhost:8000/docs
 El workflow `.github/workflows/ci.yml` corre los tests en cada pull request
 contra `main` y publica el reporte (HTML + cobertura) como artifact.
 La rama `main` está protegida: solo se puede mergear si el check `tests` pasa.
+
+## Estructura
+
+```
+.github/workflows/ci.yml   Workflow de CI (tests + reporte como artifact)
+app/main.py                API FastAPI
+tests/test_main.py         Suite de tests (pytest)
+requirements.txt           Dependencias
+```
