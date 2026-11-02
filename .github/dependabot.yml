@@ -1,0 +1,15 @@
+# Configuración de Dependabot: revisa periódicamente las dependencias y abre
+# pull requests para actualizarlas. Las alertas y los PRs de seguridad
+# (vulnerabilidades conocidas) están activados en Settings > Advanced Security.
+version: 2
+updates:
+  # Librerías de Python listadas en requirements.txt
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  # Actions usadas en los workflows (actions/checkout, etc.)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
