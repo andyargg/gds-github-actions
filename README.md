@@ -35,6 +35,33 @@ La rama `main` está protegida: solo se puede mergear si el check `tests` pasa
 - **Dependabot**: alertas de dependencias vulnerables y pull requests
   automáticos de actualización (`.github/dependabot.yml`).
 
+## Ejemplo: código limpio vs. code smells
+
+Las dos funciones devuelven exactamente lo mismo y pasarían los mismos tests,
+pero la segunda tiene *code smells*: problemas que no rompen nada hoy, pero
+hacen el código más difícil de mantener (deuda técnica).
+
+```python
+# Versión prolija
+def saludo(nombre):
+    return f"Bienvenido, {nombre}!"
+```
+
+```python
+# Versión con code smells (funciona igual)
+def saludo_feo(nombre):
+    x = 5                                   # variable sin usar
+    if nombre == "Ana":
+        return "Bienvenido, Ana!"           # lógica duplicada
+    if nombre == "Bruno":
+        return "Bienvenido, Bruno!"         # lógica duplicada
+    return "Bienvenido, " + nombre + "!"
+```
+
+Los tests (análisis dinámico) no detectan estos problemas porque el resultado
+es correcto; SonarCloud (análisis estático) sí, porque lee el código sin
+ejecutarlo.
+
 ## Estructura
 
 ```
