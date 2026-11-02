@@ -3,3 +3,4 @@ __pycache__/
 reports/
 .coverage
 .pytest_cache/
+coverage.xml
