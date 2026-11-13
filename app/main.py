@@ -49,7 +49,6 @@ def crear_usuario(usuario: Usuario):
 
 @app.get("/descuento/{precio}")
 def descuento(precio: float, cliente: str = "comun"):
-    x = 10 # variable sin usar (code smell)
     if precio <= 0:
         raise HTTPException(status_code=400, detail="Precio inválido")
     porcentaje = 0

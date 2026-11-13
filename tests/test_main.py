@@ -43,3 +43,25 @@ def test_crear_usuario():
 def test_crear_usuario_duplicado():
     r = client.post("/usuarios", json={"id": 1, "nombre": "Repetido"})
     assert r.status_code == 400
+
+
+def test_descuento_comun():
+    assert client.get("/descuento/2000").json()["final"] == 1600.0
+
+
+def test_descuento_vip():
+    assert client.get("/descuento/600?cliente=vip").json()["final"] == 510.0
+
+
+def test_descuento_empleado():
+    assert client.get("/descuento/100?cliente=empleado").json()["final"] == 85.0
+
+
+def test_descuento_invalido():
+    assert client.get("/descuento/0").status_code == 400
+
+
+def test_envio():
+    assert client.get("/envio/caba").json()["envio"] == 500
+    assert client.get("/envio/gba?precio=25000").json()["envio"] == 0
+    assert client.get("/envio/marte").status_code == 404
