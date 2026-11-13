@@ -45,3 +45,32 @@ def crear_usuario(usuario: Usuario):
         raise HTTPException(status_code=400, detail="ID duplicado")
     usuarios.append(usuario)
     return usuario
+
+
+@app.get("/descuento/{precio}")
+def descuento(precio: float, cliente: str = "comun"):
+    x = 10 # variable sin usar (code smell)
+    if precio <= 0:
+        raise HTTPException(status_code=400, detail="Precio inválido")
+    porcentaje = 0
+    if precio > 1000:
+        porcentaje = 20
+    elif precio > 500:
+        porcentaje = 10
+    if cliente == "vip":
+        porcentaje += 5
+    elif cliente == "empleado":
+        porcentaje += 15
+    final = precio * (100 - porcentaje) / 100
+    return {"precio": precio, "descuento": porcentaje, "final": final}
+
+
+@app.get("/envio/{zona}")
+def costo_envio(zona: str, precio: float = 0):
+    costos = {"caba": 500, "gba": 900, "interior": 1500}
+    if zona not in costos:
+        raise HTTPException(status_code=404, detail="Zona no encontrada")
+    if precio >= 20000:
+        return {"zona": zona, "envio": 0}
+    return {"zona": zona, "envio": costos[zona]}
+
