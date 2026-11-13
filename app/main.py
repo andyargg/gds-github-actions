@@ -45,3 +45,13 @@ def crear_usuario(usuario: Usuario):
         raise HTTPException(status_code=400, detail="ID duplicado")
     usuarios.append(usuario)
     return usuario
+
+@app.get("/descuento/{precio}")
+def descuento(precio: float):
+    x = 10 # variable sin usar (code smell)
+    if precio > 1000:
+        return {"final": precio * 0.8}
+    if precio > 500:
+        return {"final": precio * 0.9}
+    return {"final": precio}
+
