@@ -1,64 +1,36 @@
-# =====================================================================
-# Workflow de Integración Continua (CI)
-# En cada pull request contra main:
-#   1. Ejecuta la suite de tests con pytest (testing dinámico).
-#   2. Analiza el código con SonarCloud (análisis estático / SAST) y
-#      espera el resultado de su Quality Gate.
-# Su resultado se usa como "status check" requerido por la branch
-# protection rule de main: si fallan los tests o el Quality Gate,
-# no se puede mergear.
-# =====================================================================
+# CI: corre los tests y el analisis de SonarCloud en cada PR a main.
+# Si algo falla, el PR no se puede mergear (main esta protegida).
 
-# Nombre del workflow: aparece en la pestaña Actions y en el PR
 name: CI
 
-# ---------------------------------------------------------------------
-# TRIGGERS (eventos que disparan el workflow)
-# ---------------------------------------------------------------------
+# Cuando se ejecuta
 on:
-  # Evento principal: se ejecuta al abrir un PR contra main y en cada
-  # nuevo push a la rama de ese PR. Es lo que lo convierte en quality gate.
-  pull_request:
+  pull_request:        # al abrir o actualizar un PR a main
     branches: [main]
-  # También al integrar cambios en main, para que el badge del README
-  # refleje el estado actual de la rama principal.
-  push:
+  push:                # al mergear a main (para el badge del README)
     branches: [main]
-  # Permite ejecutarlo manualmente desde la pestaña Actions.
-  workflow_dispatch:
+  workflow_dispatch:   # para correrlo a mano desde Actions
 
-# ---------------------------------------------------------------------
-# JOBS: unidades de trabajo que corren en un runner
-# ---------------------------------------------------------------------
 jobs:
-  # El nombre del job ("tests") es el nombre del status check que
-  # se exige en la branch protection rule.
+  # "tests" es el nombre del check que pide la proteccion de main
   tests:
-    # RUNNER: máquina virtual Ubuntu hospedada por GitHub
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
-    # STEPS: pasos que se ejecutan en orden dentro del job.
-    # Cada step usa una ACTION reutilizable (uses) o un comando (run).
     steps:
-      # 1) Descarga el código del repositorio en el runner.
-      #    fetch-depth: 0 baja el historial completo: SonarCloud lo usa
-      #    para distinguir el código nuevo del PR del código existente.
+      # Baja el codigo. fetch-depth: 0 trae todo el historial,
+      # Sonar lo necesita para saber que codigo es nuevo
       - name: Checkout del código
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2) Instala la versión de Python indicada
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      # 3) Cache de paquetes pip. La clave depende del hash de
-      #    requirements.txt: si no cambió, se reutiliza el cache y la
-      #    instalación es más rápida. restore-keys permite usar un cache
-      #    parcial anterior si la clave exacta no existe.
+      # Guarda los paquetes de pip para que la proxima vez instale mas rapido
       - name: Cache de dependencias pip
         uses: actions/cache@v4
         with:
@@ -66,15 +38,11 @@ jobs:
           key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
           restore-keys: pip-${{ runner.os }}-
 
-      # 4) Instala las dependencias del proyecto
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
-      # 5) Ejecuta la suite de tests. Genera un reporte HTML (pytest-html)
-      #    y reportes de cobertura (pytest-cov): HTML para leerlo y XML
-      #    (coverage.xml) para que SonarCloud calcule la cobertura.
-      #    Si algún test falla, pytest devuelve código de salida != 0,
-      #    el step falla y el check del PR queda en rojo.
+      # Corre los tests y genera la cobertura.
+      # coverage.xml es el archivo que despues lee Sonar
       - name: Ejecutar tests
         run: >
           pytest
@@ -82,21 +50,16 @@ jobs:
           --cov=app --cov-report=html:reports/coverage
           --cov-report=xml:coverage.xml --cov-report=term
 
-      # 6) Análisis estático con SonarCloud, después de los tests.
-      #    El scanner lee la configuración de sonar-project.properties,
-      #    analiza el código (bugs, vulnerabilidades, code smells,
-      #    duplicación) y sube coverage.xml. Como sonar.qualitygate.wait
-      #    está activado, espera el veredicto del Quality Gate: si el
-      #    código nuevo no lo cumple, el step falla y el merge se bloquea.
-      #    SONAR_TOKEN es un secret del repo (no queda visible en el código).
+      # Analisis estatico con SonarCloud (config en sonar-project.properties).
+      # Espera el resultado del Quality Gate: si falla, falla este paso.
+      # El token esta guardado como secret del repo
       - name: Análisis SonarCloud
         uses: SonarSource/sonarqube-scan-action@v8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # 7) Publica los reportes como ARTIFACT descargable desde la corrida.
-      #    "!cancelled()" hace que se suban también cuando los tests fallan,
-      #    para poder ver qué test se rompió.
+      # Sube los reportes para descargarlos desde la corrida.
+      # Se sube aunque fallen los tests, asi se ve que fallo
       - name: Publicar reporte de tests
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
